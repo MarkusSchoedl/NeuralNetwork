@@ -1,0 +1,9 @@
+
+*ubyte
+bin
+obj
+*.suo
+deploy/
+packages/
+*.lock
+.vs/
