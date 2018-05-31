@@ -1,26 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace NeuronalNetwork
 {
     class NeuronalNetwork
     {
-        private int _inputSize, _hiddenSize, _outputSize;
+        private readonly Matrix _weigths_ih;
+        private readonly Matrix _weigths_ho;
 
-        private Matrix _weigths_ih;
-        private Matrix _weigths_ho;
+        private readonly Matrix _biasH;
+        private readonly Matrix _biasO;
+        private const double LearningRate = 0.18;
 
-        private Matrix _biasH;
-        private Matrix _biasO;
-        private double _learning_rate = 0.2;
+        private Matrix output;
 
         public NeuronalNetwork(int input, int hidden, int output)
         {
-            _inputSize = input;
-            _hiddenSize = hidden;
-            _outputSize = output;
-
             _weigths_ih = new Matrix(hidden, input);
             _weigths_ho = new Matrix(output, hidden);
             _weigths_ih.Randomize();
@@ -32,7 +29,7 @@ namespace NeuronalNetwork
             _biasO.Randomize();
         }
 
-        public double[] FeedForward(double[] inputArray)
+        public int FeedForward(double[] inputArray)
         {
             //Generating the hidden outputs
             var inputs = Matrix.FromArray(inputArray);
@@ -41,19 +38,25 @@ namespace NeuronalNetwork
             //activation function
             hidden.Map(Sigmoid);
 
-            var output = Matrix.Multiply(_weigths_ho, hidden);
+            output = Matrix.Multiply(_weigths_ho, hidden);
             output.Add(_biasO);
             output.Map(Sigmoid);
 
-            return output.ToArray();
+            var outArr = output.ToArray();
+            return Array.IndexOf(outArr, outArr.Max());
         }
 
         public static float Sigmoid(double value)
         {
-            //float k = (float) Math.Exp(value);
-            //return k / (1.0f + k);
+            float k = (float)Math.Exp(value);
+            float res = k / (1.0f + k);
 
-            return (float)(1 / (1 + Math.Exp(-value)));
+            if (float.IsNaN(res))
+            {
+                return k < 0 ? -1 : 1;
+            }
+
+            return res;
         }
 
         public static float dSigmoid(double value)
@@ -61,16 +64,17 @@ namespace NeuronalNetwork
             return (float)(value * (1 - value));
         }
 
-        public Matrix Train(double[] inputArray, double[] targetArray)
+        public int Train(double[] inputArray, double[] targetArray)
         {
             //Generating the hidden outputs
             var inputs = Matrix.FromArray(inputArray);
             var hidden = Matrix.Multiply(_weigths_ih, inputs);
             hidden.Add(_biasH);
+
             //activation function
             hidden.Map(Sigmoid);
 
-            var output = Matrix.Multiply(_weigths_ho, hidden);
+            output = Matrix.Multiply(_weigths_ho, hidden);
             output.Add(_biasO);
             output.Map(Sigmoid);
 
@@ -83,8 +87,8 @@ namespace NeuronalNetwork
             // Calculate gradient
             var gradients = Matrix.Map(output, dSigmoid);
             gradients.Multiply(outputErrors);
-            gradients.Multiply(_learning_rate);
-            
+            gradients.Multiply(LearningRate);
+
             // Calculate deltas
             var hidden_T = Matrix.Transpose(hidden);
             var weight_ho_deltas = Matrix.Multiply(gradients, hidden_T);
@@ -101,7 +105,7 @@ namespace NeuronalNetwork
             //Calculate hidden gradient
             var hidden_gradient = Matrix.Map(hidden, dSigmoid);
             hidden_gradient.Multiply(hiddenErrors);
-            hidden_gradient.Multiply(_learning_rate);
+            hidden_gradient.Multiply(LearningRate);
 
             //Calculate inputArray-hidden deltas
             var inputs_T = Matrix.Transpose(inputs);
@@ -110,7 +114,26 @@ namespace NeuronalNetwork
             //Adjust the bias by its deltas
             _biasH.Add(hidden_gradient);
 
-            return output;
+            var outArr = output.ToArray();
+            return Array.IndexOf(outArr, outArr.Max());
+        }
+
+        public double CalculateEpsilon(int label)
+        {
+            if (output == null)
+            {
+                throw new Exception("No calculation happened");
+            }
+
+            double error = 0.0;
+
+            for (int i = 0; i < output.Rows; i++)
+            {
+                error += Math.Pow(output.Value[i][0] - (label == i ? 1 : 0), 2);
+            }
+            error = error / output.Rows;
+
+            return error;
         }
     }
 }

@@ -137,10 +137,6 @@ namespace NeuronalNetwork
             }
         }
 
-        /// <summary>
-        /// Multiplies this matrix with another given matrix. 
-        /// </summary>
-        /// <exception cref="InvalidOperationException">This exception is thrown, in case the given matrix rows and columns don't match the rows and columns of this object.</exception>
         public static Matrix Multiply(Matrix m, Matrix m2)
         {
             if (m2.Rows != m.Columns)
@@ -150,20 +146,51 @@ namespace NeuronalNetwork
 
             var result = new Matrix(m.Rows, m2.Columns);
 
-            for (int row = 0; row < result.Rows; row++)
+            m2 = Transpose(m2);
+
+            for (int row = 0; row < m.Rows; row++)
             {
-                for (int col = 0; col < result.Columns; col++)
+                for (int innerRow = 0; innerRow < m2.Rows; innerRow++)
                 {
-                    //Calculate product
-                    for (int i = 0; i < m.Columns; i++)
+                    double res = 0;
+                    for (int col = 0; col < m.Columns; col++)
                     {
-                        result.Value[row][col] += m.Value[row][i] * m2.Value[i][col];
+                        res += m._matrix[row][col] * m2._matrix[innerRow][col];
                     }
+                    result._matrix[row][innerRow] = res;
                 }
             }
 
             return result;
         }
+
+        /// <summary>
+        /// Multiplies this matrix with another given matrix. 
+        /// </summary>
+        /// <exception cref="InvalidOperationException">This exception is thrown, in case the given matrix rows and columns don't match the rows and columns of this object.</exception>
+        //public static Matrix Multiply(Matrix m, Matrix m2)
+        //{
+        //    if (m2.Rows != m.Columns)
+        //    {
+        //        throw new InvalidOperationException("The Rows and Columns didnt match.");
+        //    }
+
+        //    var result = new Matrix(m.Rows, m2.Columns);
+
+        //    for (int row = 0; row < result.Rows; row++)
+        //    {
+        //        for (int col = 0; col < result.Columns; col++)
+        //        {
+        //            //Calculate product
+        //            for (int i = 0; i < m.Columns; i++)
+        //            {
+        //                result._matrix[row][col] += m._matrix[row][i] * m2._matrix[i][col];
+        //            }
+        //        }
+        //    }
+
+        //    return result;
+        //}
 
         /// <summary>
         /// Multiplies this matrix with another given matrix. 
@@ -219,7 +246,7 @@ namespace NeuronalNetwork
             {
                 for (int col = 0; col < m.Columns; col++)
                 {
-                    Value[row][col] += m.Value[row][col];
+                    _matrix[row][col] += m._matrix[row][col];
                 }
             }
         }

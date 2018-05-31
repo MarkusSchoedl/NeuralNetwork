@@ -146,11 +146,11 @@ namespace NeuronalNetwork.UnitTesting
             m2.Value[1][0] = -1;
             m2.Value[2][0] = 99;
 
-            var res = Matrix.Multiply(m1, m2);
+            m1.Multiply(m2);
 
-            Assert.That(Math.Abs(res.Value[0][0] - 13 * 23) < 0.001);
-            Assert.That(Math.Abs(res.Value[1][0] - 65) < 0.001);
-            Assert.That(Math.Abs(res.Value[2][0] - 99 * 3) < 0.001);
+            Assert.That(Math.Abs(m1.Value[0][0] - 13 * 23) < 0.001);
+            Assert.That(Math.Abs(m1.Value[1][0] - 65) < 0.001);
+            Assert.That(Math.Abs(m1.Value[2][0] - 99 * 3) < 0.001);
         }
     }
 }

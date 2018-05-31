@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using static NeuronalNetwork.GetImages;
 
@@ -8,53 +10,165 @@ namespace NeuronalNetwork
 {
     class Program
     {
-        private double[,] data = new double[4, 2] {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
+        private const double DesiredEpsilon = 0.001;
 
         static void Main(string[] args)
         {
-            //string location = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            //var images = GetImagesFromFile(location);
+            string location = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var images = GetImagesFromFile(location, "train", 60000);
 
-            var nn = new NeuronalNetwork(2, 2, 1);
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
 
-            Random gen = new Random();
+            long iterations = 0;
+            long errors = 0;
+            double errorRate = 1;
+            double epsilon = 1;
 
-            for (int i = 0; i < 300000; i++)
+            Random rand = new Random();
+            var nn = new NeuronalNetwork(784, 89, 10);
+            double[] target = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+            // Train Network until desired epsilon is reached
+            while (iterations <= 60000)
             {
-                double val1 = (int)(gen.NextDouble() + 0.5);
-                double val2 = (int)(gen.NextDouble() + 0.5);
+                iterations++;
+                int randInd = rand.Next(images.Count);
 
-                double[] input = { val1, val2 };
-                double[] target;
+                int label = images[randInd].GetLabel();
 
-                if (val1 == 0 && val2 == 1 || val1 == 1 && val2 == 0)
+                target[label] = 1;
+                var res = nn.Train(images[randInd].GetData(), target);
+                target[label] = 0;
+
+                if (label != res)
                 {
-                    target = new[] { 1.0 };
+                    errors++;
+                }
+
+                if (iterations % 1000 == 0)
+                {
+                    errorRate = errors / 1000.0;
+                    errors = 0;
+
+                    if (label != res)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkRed;
+                    }
+
+                    epsilon = nn.CalculateEpsilon(label);
+
+                    Console.Write("Expected: " + label + " -  was: " + res + "   errorRate: " + errorRate.ToString("0.0000") + " Epsilon: " + epsilon.ToString("0.000000") + "\n");
+
+                    Console.Write("\n");
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+            }
+
+            watch.Stop();
+            var ts = watch.Elapsed;
+            string elapsedTime = $"{ts.Hours} Hours, {ts.Minutes} Minutes, {ts.Seconds} Seconds, {ts.Milliseconds} ms";
+
+            images.Clear();
+            images = GetImagesFromFile(location, "t10k", 10000);
+
+            errors = 0;
+            errorRate = 1;
+
+            int[,] confusionMatrix = new int[10, 10];
+
+            for (int i = 0; i < images.Count; i++)
+            {
+                int res = nn.FeedForward(images[i].GetData());
+                int label = images[i].GetLabel();
+
+                if (res != label)
+                {
+                    errors++;
+                }
+
+                confusionMatrix[label, res]++;
+            }
+
+            string timePerPicture = (ts.TotalMilliseconds / iterations).ToString("N2");
+            PrintResult(confusionMatrix, timePerPicture, elapsedTime);
+
+            Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Prints all the relevant data into a beautiful matrix.
+        /// </summary>
+        /// <param name="confusionMatrix">The confusion matrix as result.</param>
+        /// <param name="timePerPicture">The string formatted value of the average Time per picture</param>
+        /// <param name="elapsedTime">The elapsed Time as string.</param>
+        private static void PrintResult(int[,] confusionMatrix, string timePerPicture, string elapsedTime)
+        {
+            int rightGuesses = 0, wrongGuesses = 0;
+
+            char[] yAxisLabel = "GUESSED".ToArray();
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n\nElapsed Time: " + elapsedTime + " sec\n(" + timePerPicture + " ms per image)\n\n");
+
+            Console.WriteLine("Confusion Matrix:");
+
+            for (int i = 0; i < 10; i++)
+            {
+                // Print Axis Label
+                if (i == 0)
+                {
+                    Console.Write("\n\n                      D E S I R E D   O U T P U T\n\n");
+                    Console.Write("              ");
+                    for (int j = 0; j < 10; j++)
+                    {
+                        Console.Write(" " + j + "   ");
+                    }
+                    Console.Write("\n");
+                }
+
+                // Print Y axis label
+                if (i > 0 && i - 1 < yAxisLabel.Count())
+                {
+                    var oldCol = Console.ForegroundColor;
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Write(" " + yAxisLabel[i - 1] + "  ");
+                    Console.ForegroundColor = oldCol;
                 }
                 else
                 {
-                    target = new[] { 0.0 };
+                    Console.Write("    ");
                 }
 
-                var output = nn.Train(input, target);
-
-                if (i % 100 == 0)
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("Number " + i + ": ");
+                for (int j = 0; j < 10; j++)
                 {
-                    Console.WriteLine("input: " + (int)val1 + "  " + (int)val2 + "  expected: " +
-                                      (int)(double)target[0]);
-                    Console.WriteLine(output.Value[0][0]);
+                    if (i == j)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Magenta;
+                        rightGuesses += confusionMatrix[i, j];
+                    }
+                    else if (confusionMatrix[i, j] != 0)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        wrongGuesses += confusionMatrix[i, j];
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+
+                    Console.Write(confusionMatrix[i, j].ToString("D4") + " ");
                 }
 
-                //if (Console.ReadKey().KeyChar == 'Q')
-                //    break;
+                Console.Write("\n");
             }
 
-            Console.WriteLine("0 0 - " + nn.FeedForward(new double[] { 0.0, 0.0 })[0]);
-            Console.WriteLine("1 0 - " + nn.FeedForward(new double[] { (double)0.0, (double)1.0 })[0]);
-            Console.WriteLine("0 1 - " + nn.FeedForward(new double[] { (double)1.0, 0.0 })[0]);
-            Console.WriteLine("1 1 - " + nn.FeedForward(new double[] { (double)1.0, 1.0 })[0]);
-
-            Console.ReadKey();
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("\n Wrong Guesses: " + wrongGuesses);
+            Console.WriteLine(" Right Guesses: " + rightGuesses);
+            Console.WriteLine(" Accuracy: " + ((rightGuesses / (float)(wrongGuesses + rightGuesses)) * 100.0).ToString("0.00") + "%");
         }
     }
 }

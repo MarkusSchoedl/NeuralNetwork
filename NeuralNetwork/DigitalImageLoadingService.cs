@@ -10,18 +10,18 @@ namespace NeuronalNetwork
 {
     static class GetImages
     {
-        private static string _subFolder= "Files";
+        private static readonly string _subFolder= "Files";
 
-        public static List<DigitImage> GetImagesFromFile(string location)
+        public static List<DigitImage> GetImagesFromFile(string location, string filePrefix, int imagesCount)
         {
             List<DigitImage> images = new List<DigitImage>();
 
             try
             {
                 Console.WriteLine("\nBegin\n");
-                FileStream ifsLabels = new FileStream(Path.Combine(location, _subFolder, "train-labels-idx1-ubyte.dat"),
+                FileStream ifsLabels = new FileStream(Path.Combine(location, _subFolder, filePrefix + "-labels.idx1-ubyte"),
                  FileMode.Open); // test labels
-                FileStream ifsImages = new FileStream(Path.Combine(location, _subFolder, "train-images-idx3-ubyte.dat"),
+                FileStream ifsImages = new FileStream(Path.Combine(location, _subFolder, filePrefix + "-images.idx3-ubyte"),
                  FileMode.Open); // test images
 
                 BinaryReader brLabels =
@@ -42,7 +42,7 @@ namespace NeuronalNetwork
                     pixels[i] = new byte[28];
 
                 // each test image
-                for (int di = 0; di < 60000; ++di)
+                for (int di = 0; di < imagesCount; ++di)
                 {
                     for (int i = 0; i < 28; ++i)
                     {
